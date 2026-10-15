@@ -28,6 +28,7 @@ import { formatDuration } from "../utils/helpers";
 const FullPlayerModal = () => {
   const {
     currentHymn,
+    currentTune,
     isPlaying,
     position,
     duration,
@@ -132,6 +133,11 @@ const FullPlayerModal = () => {
           <Text style={[styles.hymnTitle, { color: colors.text }]} numberOfLines={2}>
             {title}
           </Text>
+          {currentTune ? (
+            <Text style={[styles.composerText, { color: colors.primary, fontWeight: "700" }]}>
+              {currentTune.name}
+            </Text>
+          ) : null}
           {currentHymn.composer && (
             <Text style={[styles.composerText, { color: colors.textSecondary }]}>
               {currentHymn.composer}

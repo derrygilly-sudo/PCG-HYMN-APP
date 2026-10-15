@@ -9,7 +9,7 @@ Cross-platform mobile application for the **Presbyterian Church of Ghana Hymnal*
 - **Offline-First SQLite Storage**: Fast local queries and offline access using `expo-sqlite`.
 - **Bilingual Hymns**: English (`lyrics_en`, `title_en`) and Twi (`lyrics_twi`, `title_twi`).
 - **Tonic Sol-fa Notation**: In-app sol-fa sheet viewer for choristers and instrumentalists.
-- **Audio Streaming & Offline Downloads**: Stream via `expo-av` or download MP3s to device storage with `expo-file-system`.
+- **Audio Streaming & Offline Downloads**: Stream via `expo-audio` or download MP3s to device storage with `expo-file-system`.
 - **Floating Mini Player & Expandable Modal Player**: Seamless audio playback throughout the app.
 - **Smart Search & Quick Dialpad**: Instant number jump and fuzzy search with `fuse.js`.
 - **Personal Library**: Custom playlists, favorite bookmarks, and recent history.
@@ -21,12 +21,12 @@ Cross-platform mobile application for the **Presbyterian Church of Ghana Hymnal*
 
 ## 🛠 Tech Stack
 
-- **Framework**: React Native 0.81.5 / Expo SDK 54
+- **Framework**: React Native 0.86.3 / Expo SDK 57
 - **Navigation**: React Navigation v7 (Bottom Tabs + Stack)
 - **State Management**: Zustand v5
 - **Local DB**: Expo SQLite (WAL mode)
 - **Backend / Sync**: Supabase JS Client v2
-- **Audio**: Expo AV & Expo File System
+- **Audio**: Expo Audio & Expo File System
 - **Icons**: Tabler Icons React Native
 
 ---

@@ -25,6 +25,7 @@ import LyricsView from "../components/LyricsView";
 import PlaylistModal from "../components/PlaylistModal";
 import PresentationModal from "../components/PresentationModal";
 import TonicSolfaView from "../components/TonicSolfaView";
+import TuneList from "../components/TuneList";
 import { getHymnById } from "../database/localDb";
 import { getLocalAudioPath } from "../services/audioService";
 import { useHymnStore } from "../stores/hymnStore";
@@ -32,6 +33,7 @@ import { usePlayerStore } from "../stores/playerStore";
 import { useSettingsStore } from "../stores/settingsStore";
 import { getThemeColors, theme } from "../theme/theme";
 import { LANGUAGES } from "../utils/constants";
+import { getHymnTunes } from "../utils/tunes";
 
 const HymnDetailScreen = ({ route }) => {
   const { hymnId } = route.params;
@@ -41,7 +43,7 @@ const HymnDetailScreen = ({ route }) => {
   const [showPresentationModal, setShowPresentationModal] = useState(false);
 
   const { toggleFavorite, recordHymnView } = useHymnStore();
-  const { loadAndPlay, currentHymn, isPlaying, togglePlayPause } =
+  const { loadAndPlay, currentHymn, currentTune, isPlaying, togglePlayPause } =
     usePlayerStore();
   const language = useSettingsStore((state) => state.language);
   const darkMode = useSettingsStore((state) => state.darkMode);
@@ -61,23 +63,24 @@ const HymnDetailScreen = ({ route }) => {
     setHymn(h);
   };
 
-  const handlePlay = async () => {
-    if (!hymn) return;
+  // Plays one specific tune of this hymn (tapping the playing tune pauses/resumes it)
+  const handlePlayTune = async (tune) => {
+    if (!hymn || !tune) return;
 
-    if (currentHymn?.id === hymn.id) {
+    if (currentHymn?.id === hymn.id && currentTune?.id === tune.id) {
       togglePlayPause();
       return;
     }
 
-    const localPath = await getLocalAudioPath(hymn.id);
-    const audioUri = localPath || hymn.audio_url;
+    const localPath = await getLocalAudioPath(hymn.id, tune.id);
+    const audioUri = localPath || tune.audio_url;
 
     if (!audioUri) {
-      Alert.alert("No Audio", "This hymn does not have an audio track yet.");
+      Alert.alert("No Audio", "This tune does not have an audio file yet.");
       return;
     }
 
-    await loadAndPlay(hymn, audioUri);
+    await loadAndPlay(hymn, audioUri, tune);
   };
 
   const handleFavorite = () => {
@@ -121,6 +124,7 @@ const HymnDetailScreen = ({ route }) => {
       : hymn.title_en;
   const secondaryTitle =
     language === LANGUAGES.TWI ? hymn.title_en : hymn.title_twi;
+  const tunes = getHymnTunes(hymn);
   const isCurrentlyPlaying = currentHymn?.id === hymn.id && isPlaying;
 
   return (
@@ -264,8 +268,8 @@ const HymnDetailScreen = ({ route }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Audio Banner */}
-        {hymn.audio_url ? (
+        {/* Audio: one tune = single banner, several tunes = a list with a button per tune */}
+        {tunes.length === 1 ? (
           <View style={styles.audioRow}>
             <TouchableOpacity
               style={[
@@ -276,7 +280,7 @@ const HymnDetailScreen = ({ route }) => {
                     : colors.primary,
                 },
               ]}
-              onPress={handlePlay}
+              onPress={() => handlePlayTune(tunes[0])}
             >
               {isCurrentlyPlaying ? (
                 <IconPlayerPauseFilled size={26} color="#000000" />
@@ -295,8 +299,15 @@ const HymnDetailScreen = ({ route }) => {
               </Text>
             </TouchableOpacity>
 
-            <DownloadButton hymn={hymn} />
+            <DownloadButton hymn={hymn} tune={tunes[0]} onChanged={loadHymn} />
           </View>
+        ) : tunes.length > 1 ? (
+          <TuneList
+            hymn={hymn}
+            tunes={tunes}
+            onPlay={handlePlayTune}
+            onDownloadChanged={loadHymn}
+          />
         ) : null}
 
         {/* Tabs: Lyrics vs Tonic Solfa */}
@@ -347,7 +358,7 @@ const HymnDetailScreen = ({ route }) => {
                 },
               ]}
             >
-              Tonic Solfa
+              Sol-fa & Score
             </Text>
           </TouchableOpacity>
         </View>
@@ -356,7 +367,11 @@ const HymnDetailScreen = ({ route }) => {
         {activeTab === "lyrics" ? (
           <LyricsView hymn={hymn} />
         ) : (
-          <TonicSolfaView tonicSolfa={hymn.tonic_solfa} />
+          <TonicSolfaView
+          tonicSolfa={hymn.tonic_solfa}
+          solfaPdfUrl={hymn.solfa_pdf_url}
+          scorePdfUrl={hymn.score_pdf_url}
+        />
         )}
 
         <View style={{ height: 140 }} />

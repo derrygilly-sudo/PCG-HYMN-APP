@@ -14,13 +14,20 @@
     "web": {},
     "plugins": [
       [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": true
+        }
+      ],
+      "expo-asset",
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#2D5A27"
         }
-      ],
-      "expo-audio",
-      "expo-asset"
+      ]
     ]
   }
 }

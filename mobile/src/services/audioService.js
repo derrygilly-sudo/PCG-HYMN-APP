@@ -1,12 +1,17 @@
 // src/services/audioService.js
 /* eslint-disable import/namespace */
-import * as FileSystem from 'expo-file-system';
-import { addDownloadRecord, removeDownloadRecord } from '../database/localDb';
+import * as FileSystem from 'expo-file-system/legacy';
+import { addTuneDownload, removeTuneDownload } from '../database/localDb';
 import { AUDIO_DIRECTORY } from '../utils/constants';
 
 const getAudioDirectory = () => {
   return (FileSystem.documentDirectory || '') + AUDIO_DIRECTORY;
 };
+
+// A hymn can have several tunes, each saved as its own file.
+// The "main" tune keeps the original file name so older downloads still work.
+const getFileName = (hymnId, tuneId = 'main') =>
+  tuneId === 'main' ? `hymn_${hymnId}.mp3` : `hymn_${hymnId}_${tuneId}.mp3`;
 
 const ensureDirectoryExists = async () => {
   const dir = getAudioDirectory();
@@ -17,11 +22,10 @@ const ensureDirectoryExists = async () => {
   return dir;
 };
 
-export const downloadAudio = async (hymnId, audioUrl, onProgress) => {
+export const downloadAudio = async (hymnId, audioUrl, onProgress, tuneId = 'main') => {
   try {
     const dir = await ensureDirectoryExists();
-    const fileName = `hymn_${hymnId}.mp3`;
-    const filePath = dir + fileName;
+    const filePath = dir + getFileName(hymnId, tuneId);
 
     const downloadResumable = FileSystem.createDownloadResumable(
       audioUrl,
@@ -41,7 +45,7 @@ export const downloadAudio = async (hymnId, audioUrl, onProgress) => {
 
     if (result && result.uri) {
       const fileInfo = await FileSystem.getInfoAsync(result.uri);
-      await addDownloadRecord(hymnId, result.uri, fileInfo.size || 0);
+      addTuneDownload(hymnId, tuneId, result.uri, fileInfo.size || 0);
       return { success: true, path: result.uri };
     }
 
@@ -52,18 +56,17 @@ export const downloadAudio = async (hymnId, audioUrl, onProgress) => {
   }
 };
 
-export const deleteDownloadedAudio = async (hymnId) => {
+export const deleteDownloadedAudio = async (hymnId, tuneId = 'main') => {
   try {
     const dir = getAudioDirectory();
-    const fileName = `hymn_${hymnId}.mp3`;
-    const filePath = dir + fileName;
+    const filePath = dir + getFileName(hymnId, tuneId);
 
     const fileInfo = await FileSystem.getInfoAsync(filePath);
     if (fileInfo.exists) {
       await FileSystem.deleteAsync(filePath);
     }
 
-    await removeDownloadRecord(hymnId);
+    removeTuneDownload(hymnId, tuneId);
     return { success: true };
   } catch (error) {
     console.error('Delete error:', error);
@@ -71,11 +74,10 @@ export const deleteDownloadedAudio = async (hymnId) => {
   }
 };
 
-export const getLocalAudioPath = async (hymnId) => {
+export const getLocalAudioPath = async (hymnId, tuneId = 'main') => {
   try {
     const dir = getAudioDirectory();
-    const fileName = `hymn_${hymnId}.mp3`;
-    const filePath = dir + fileName;
+    const filePath = dir + getFileName(hymnId, tuneId);
 
     const fileInfo = await FileSystem.getInfoAsync(filePath);
     if (fileInfo.exists) {

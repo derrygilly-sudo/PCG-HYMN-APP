@@ -155,10 +155,29 @@ const MediaPage = () => {
         const { data: urlData } = supabase.storage.from('audio').getPublicUrl(fileName);
         const publicUrl = urlData.publicUrl;
 
-        // 3. Update Hymn record
+        // 3. Update Hymn record (replaces the first/default tune, keeps any other tunes)
+        const { data: current } = await supabase
+          .from('hymns')
+          .select('tunes')
+          .eq('id', item.matchedHymn.id)
+          .single();
+        const existingTunes = Array.isArray(current?.tunes) ? current.tunes : [];
+        const firstTune = {
+          id: existingTunes[0]?.id || 'main',
+          name: existingTunes[0]?.name || 'Main Tune',
+          audio_url: publicUrl,
+          audio_duration: 0,
+          audio_size_bytes: item.file.size || 0,
+        };
+        const nextTunes = [firstTune, ...existingTunes.slice(1)];
+
         const { error: updateErr } = await supabase
           .from('hymns')
-          .update({ audio_url: publicUrl, updated_at: new Date().toISOString() })
+          .update({
+            audio_url: publicUrl,
+            tunes: nextTunes,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', item.matchedHymn.id);
 
         if (updateErr) throw updateErr;

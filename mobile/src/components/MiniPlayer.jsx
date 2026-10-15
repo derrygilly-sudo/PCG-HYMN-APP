@@ -17,6 +17,7 @@ const MiniPlayer = () => {
   const insets = useSafeAreaInsets();
   const {
     currentHymn,
+    currentTune,
     isPlaying,
     isVisible,
     position,
@@ -83,7 +84,8 @@ const MiniPlayer = () => {
             {title}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {isPlaying ? "Playing audio..." : "Paused"}
+            {currentTune ? `${currentTune.name} · ` : ""}
+            {isPlaying ? "Playing" : "Paused"}
           </Text>
         </View>
 

@@ -112,6 +112,48 @@ export const initDatabase = async () => {
     ON playlist_hymns(playlist_id)
   `);
 
+  // Migration: add PDF columns to hymns tables created by older app versions
+  const hymnColumns = database
+    .getAllSync(`PRAGMA table_info(hymns)`)
+    .map((col) => col.name);
+  if (!hymnColumns.includes("score_pdf_url")) {
+    database.execSync(`ALTER TABLE hymns ADD COLUMN score_pdf_url TEXT`);
+  }
+  if (!hymnColumns.includes("solfa_pdf_url")) {
+    database.execSync(`ALTER TABLE hymns ADD COLUMN solfa_pdf_url TEXT`);
+  }
+  if (!hymnColumns.includes("tunes_json")) {
+    database.execSync(`ALTER TABLE hymns ADD COLUMN tunes_json TEXT`);
+  }
+
+  // One row per downloaded tune (a hymn can have several tunes)
+  database.execSync(`
+    CREATE TABLE IF NOT EXISTS tune_downloads (
+      hymn_id TEXT NOT NULL,
+      tune_id TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      file_size INTEGER DEFAULT 0,
+      downloaded_at TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (hymn_id, tune_id)
+    )
+  `);
+
+  // One-time: older single-audio downloads become the "main" tune
+  const tuneMigrated = database.getFirstSync(
+    `SELECT value FROM sync_meta WHERE key = ?`,
+    ["tune_downloads_migrated"],
+  );
+  if (!tuneMigrated) {
+    database.execSync(`
+      INSERT OR IGNORE INTO tune_downloads (hymn_id, tune_id, file_path, file_size, downloaded_at)
+      SELECT hymn_id, 'main', file_path, file_size, downloaded_at FROM downloads
+    `);
+    database.runSync(
+      `INSERT OR REPLACE INTO sync_meta (key, value) VALUES (?, ?)`,
+      ["tune_downloads_migrated", "1"],
+    );
+  }
+
   const existing = database.getFirstSync(
     `SELECT value FROM sync_meta WHERE key = ?`,
     ["last_synced_at"],
@@ -240,8 +282,9 @@ export const insertOrUpdateHymn = (hymn) => {
     `INSERT OR REPLACE INTO hymns 
     (id, hymn_number, category_id, title_en, title_twi, lyrics_en, lyrics_twi, 
      tonic_solfa, composer, scripture_reference, meter, key_signature,
-     audio_url, audio_duration, audio_size_bytes, is_published, updated_at, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     audio_url, audio_duration, audio_size_bytes, is_published, updated_at, created_at,
+     score_pdf_url, solfa_pdf_url, tunes_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       hymn.id,
       hymn.hymn_number,
@@ -261,6 +304,11 @@ export const insertOrUpdateHymn = (hymn) => {
       hymn.is_published ? 1 : 0,
       hymn.updated_at || null,
       hymn.created_at || null,
+      hymn.score_pdf_url || null,
+      hymn.solfa_pdf_url || null,
+      Array.isArray(hymn.tunes) && hymn.tunes.length > 0
+        ? JSON.stringify(hymn.tunes)
+        : null,
     ],
   );
 };
@@ -432,6 +480,63 @@ export const addDownloadRecord = (hymnId, filePath, fileSize) => {
 export const removeDownloadRecord = (hymnId) => {
   const database = getDb();
   database.runSync(`DELETE FROM downloads WHERE hymn_id = ?`, [hymnId]);
+};
+
+// Keeps the one-row-per-hymn "downloads" summary in sync with tune_downloads.
+// (Library/Downloads lists and the "is_downloaded" flag use the summary row.)
+const refreshDownloadSummary = (hymnId) => {
+  const database = getDb();
+  const row = database.getFirstSync(
+    `SELECT COUNT(*) as c, COALESCE(SUM(file_size), 0) as s, MIN(file_path) as p
+     FROM tune_downloads WHERE hymn_id = ?`,
+    [hymnId],
+  );
+  if (row && row.c > 0) {
+    const existing = database.getFirstSync(
+      `SELECT hymn_id FROM downloads WHERE hymn_id = ?`,
+      [hymnId],
+    );
+    if (existing) {
+      database.runSync(
+        `UPDATE downloads SET file_path = ?, file_size = ? WHERE hymn_id = ?`,
+        [row.p, row.s, hymnId],
+      );
+    } else {
+      database.runSync(
+        `INSERT INTO downloads (hymn_id, file_path, file_size) VALUES (?, ?, ?)`,
+        [hymnId, row.p, row.s],
+      );
+    }
+  } else {
+    database.runSync(`DELETE FROM downloads WHERE hymn_id = ?`, [hymnId]);
+  }
+};
+
+export const getTuneDownloads = (hymnId) => {
+  const database = getDb();
+  return database.getAllSync(
+    `SELECT tune_id, file_path, file_size FROM tune_downloads WHERE hymn_id = ?`,
+    [hymnId],
+  );
+};
+
+export const addTuneDownload = (hymnId, tuneId, filePath, fileSize) => {
+  const database = getDb();
+  database.runSync(
+    `INSERT OR REPLACE INTO tune_downloads (hymn_id, tune_id, file_path, file_size)
+     VALUES (?, ?, ?, ?)`,
+    [hymnId, tuneId, filePath, fileSize],
+  );
+  refreshDownloadSummary(hymnId);
+};
+
+export const removeTuneDownload = (hymnId, tuneId) => {
+  const database = getDb();
+  database.runSync(
+    `DELETE FROM tune_downloads WHERE hymn_id = ? AND tune_id = ?`,
+    [hymnId, tuneId],
+  );
+  refreshDownloadSummary(hymnId);
 };
 
 export const getDownloadPath = (hymnId) => {

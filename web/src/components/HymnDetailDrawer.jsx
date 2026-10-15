@@ -26,6 +26,14 @@ const HymnDetailDrawer = ({ hymn, isOpen, onClose, onEdit }) => {
 
   if (!hymn || !isOpen) return null;
 
+  // All audio tunes (older hymns with a single audio_url count as one tune)
+  const hymnTunes =
+    Array.isArray(hymn.tunes) && hymn.tunes.length > 0
+      ? hymn.tunes.filter((t) => t && t.audio_url)
+      : hymn.audio_url
+      ? [{ id: 'main', name: 'Main Tune', audio_url: hymn.audio_url }]
+      : [];
+
   const launchPresenter = () => {
     onClose();
     navigate(`/presenter/${hymn.id || hymn.hymn_number}`);
@@ -114,12 +122,21 @@ const HymnDetailDrawer = ({ hymn, isOpen, onClose, onEdit }) => {
         {/* Body Content */}
         <div className="drawer-body">
           {/* Audio Section */}
-          {hymn.audio_url && (
+          {hymnTunes.length > 0 && (
             <div className="card-container" style={{ padding: 16, background: 'var(--pcg-blue-subtle)', borderColor: 'rgba(24, 34, 124, 0.15)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontWeight: 700, color: 'var(--pcg-blue)' }}>
-                <AudioIcon /> Organ / Choir Audio Recording
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontWeight: 700, color: 'var(--pcg-blue)' }}>
+                <AudioIcon /> {hymnTunes.length > 1 ? `Audio Tunes (${hymnTunes.length})` : 'Organ / Choir Audio Recording'}
               </div>
-              <audio controls src={hymn.audio_url} style={{ width: '100%', height: 40 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {hymnTunes.map((t, i) => (
+                  <div key={t.id || i}>
+                    {hymnTunes.length > 1 && (
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{t.name || `Tune ${i + 1}`}</div>
+                    )}
+                    <audio controls src={t.audio_url} style={{ width: '100%', height: 40 }} />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -188,7 +205,11 @@ const HymnDetailDrawer = ({ hymn, isOpen, onClose, onEdit }) => {
                 <span className={`badge ${hymn.is_published ? 'badge-green' : 'badge-gold'}`}>
                   {hymn.is_published ? '✓ Published to Mobile App' : 'Draft / Unpublished'}
                 </span>
-                {hymn.audio_url && <span className="badge badge-blue">✓ Audio Attached</span>}
+                {hymnTunes.length > 0 && (
+                  <span className="badge badge-blue">
+                    ✓ {hymnTunes.length > 1 ? `${hymnTunes.length} Tunes Attached` : 'Audio Attached'}
+                  </span>
+                )}
                 {hymn.title_twi && <span className="badge badge-purple">✓ Twi Translated</span>}
                 {hymn.tonic_solfa && <span className="badge badge-gray">✓ Sol-fa Added</span>}
               </div>

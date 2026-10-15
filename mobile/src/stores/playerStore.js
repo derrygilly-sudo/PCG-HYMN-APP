@@ -1,12 +1,38 @@
 // src/stores/playerStore.js
+// Audio playback built on expo-audio (expo-av was removed in Expo SDK 55).
+// The public state/actions are unchanged: position and duration are in milliseconds.
 import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
 import { create } from "zustand";
 
 let statusSubscription = null;
 
+const releasePlayer = (player) => {
+  if (statusSubscription) {
+    try {
+      statusSubscription.remove();
+    } catch (e) {
+      // ignore
+    }
+    statusSubscription = null;
+  }
+  if (player) {
+    try {
+      player.clearLockScreenControls();
+    } catch (e) {
+      // ignore
+    }
+    try {
+      player.remove();
+    } catch (e) {
+      // ignore
+    }
+  }
+};
+
 export const usePlayerStore = create((set, get) => ({
-  sound: null,
+  sound: null, // the expo-audio AudioPlayer
   currentHymn: null,
+  currentTune: null, // the tune currently loaded (a hymn can have several)
   isPlaying: false,
   isLoading: false,
   position: 0,
@@ -15,50 +41,57 @@ export const usePlayerStore = create((set, get) => ({
   isExpanded: false,
   playbackRate: 1.0,
 
-  loadAndPlay: async (hymn, audioUri) => {
+  loadAndPlay: async (hymn, audioUri, tune = null) => {
     try {
-      const currentSound = get().sound;
-      if (statusSubscription) {
-        statusSubscription.remove();
-        statusSubscription = null;
-      }
-      if (currentSound) {
-        try {
-          currentSound.pause();
-          currentSound.release();
-        } catch (_) {}
-      }
+      releasePlayer(get().sound);
 
-      set({ isLoading: true, currentHymn: hymn, isVisible: true, position: 0, duration: 0 });
+      set({
+        isLoading: true,
+        currentHymn: hymn,
+        currentTune: tune,
+        isVisible: true,
+        sound: null,
+        position: 0,
+        duration: 0,
+      });
 
-      try {
-        await setAudioModeAsync({
-          playsInSilentMode: true,
-          shouldPlayInBackground: true,
-        });
-      } catch (e) {
-        console.warn("Failed to set audio mode:", e);
-      }
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        shouldPlayInBackground: true,
+        interruptionMode: "doNotMix",
+        allowsRecording: false,
+      });
 
-      const player = createAudioPlayer({ uri: audioUri });
-      player.playbackRate = get().playbackRate;
+      const player = createAudioPlayer({ uri: audioUri }, { updateInterval: 250 });
 
       statusSubscription = player.addListener("playbackStatusUpdate", (status) => {
-        const currentTimeMs = Math.round((status.currentTime || 0) * 1000);
-        const durationMs = Math.round((status.duration || 0) * 1000);
-
+        if (!status.isLoaded) return;
         set({
-          position: currentTimeMs,
-          duration: durationMs,
-          isPlaying: status.playing ?? player.playing,
+          position: Math.round((status.currentTime || 0) * 1000),
+          duration: Math.round((status.duration || 0) * 1000),
+          isPlaying: status.playing,
         });
-
         if (status.didJustFinish) {
           set({ isPlaying: false, position: 0 });
+          player.seekTo(0).catch(() => {});
         }
       });
 
+      player.setPlaybackRate(get().playbackRate);
       player.play();
+
+      // Lock-screen controls; on Android this keeps playback alive in the background
+      try {
+        player.setActiveForLockScreen(true, {
+          title: hymn?.title_en || "PCG Hymn",
+          artist: [hymn?.hymn_number ? `Hymn ${hymn.hymn_number}` : "PCG Hymnal", tune?.name]
+            .filter(Boolean)
+            .join(" · "),
+        });
+      } catch (e) {
+        console.warn("Lock screen controls unavailable:", e);
+      }
+
       set({ sound: player, isLoading: false, isPlaying: true });
     } catch (error) {
       console.error("Error loading audio:", error);
@@ -72,10 +105,8 @@ export const usePlayerStore = create((set, get) => ({
     try {
       if (isPlaying) {
         sound.pause();
-        set({ isPlaying: false });
       } else {
         sound.play();
-        set({ isPlaying: true });
       }
     } catch (error) {
       console.error("Error toggling play/pause:", error);
@@ -86,9 +117,7 @@ export const usePlayerStore = create((set, get) => ({
     const { sound } = get();
     if (!sound) return;
     try {
-      const positionSeconds = positionMillis / 1000;
-      sound.seekTo(positionSeconds);
-      set({ position: positionMillis });
+      await sound.seekTo(positionMillis / 1000);
     } catch (error) {
       console.error("Error seeking:", error);
     }
@@ -99,7 +128,7 @@ export const usePlayerStore = create((set, get) => ({
     set({ playbackRate: rate });
     if (sound) {
       try {
-        sound.playbackRate = rate;
+        sound.setPlaybackRate(rate);
       } catch (error) {
         console.error("Error setting playback rate:", error);
       }
@@ -108,21 +137,18 @@ export const usePlayerStore = create((set, get) => ({
 
   stop: async () => {
     const { sound } = get();
-    if (statusSubscription) {
-      statusSubscription.remove();
-      statusSubscription = null;
-    }
     if (sound) {
       try {
         sound.pause();
-        sound.release();
       } catch (error) {
         console.error("Error stopping:", error);
       }
+      releasePlayer(sound);
     }
     set({
       sound: null,
       currentHymn: null,
+      currentTune: null,
       isPlaying: false,
       position: 0,
       duration: 0,
