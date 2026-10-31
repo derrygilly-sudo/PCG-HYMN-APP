@@ -36,7 +36,7 @@ const HymnListScreen = ({ navigation }) => {
     searchHymns,
     clearSearch,
     filterByCategory,
-    getHymnsWithAudio,
+    // getHymnsWithAudio,
   } = useHymnStore();
 
   const darkMode = useSettingsStore((state) => state.darkMode);
@@ -44,7 +44,7 @@ const HymnListScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadHymns();
-  }, []);
+  }, [loadHymns]);
 
   const handleSearch = (query) => {
     setSearchQuery(query);
@@ -58,7 +58,7 @@ const HymnListScreen = ({ navigation }) => {
   const getFilteredHymns = () => {
     let list = searchQuery.trim() ? searchResults : hymns;
     if (activeFilter === "audio") {
-      list = getHymnsWithAudio();
+      list = list.filter((h) => !!h.audio_url);
     } else if (activeFilter === "favorites") {
       list = list.filter((h) => !!h.is_favorite);
     }

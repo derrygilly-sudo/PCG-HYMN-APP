@@ -13,12 +13,11 @@ import {
   SparkleIcon,
   HymnIcon,
   MoreIcon,
-  DeleteIcon,
 } from '../config/icons';
 
 const MediaPage = () => {
   const [hymns, setHymns] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filterMode, setFilterMode] = useState('missing'); // 'all' | 'with_audio' | 'missing'
   const [search, setSearch] = useState('');

@@ -91,16 +91,28 @@ export const getLocalAudioPath = async (hymnId, tuneId = 'main') => {
 
 export const getTotalDownloadSize = async () => {
   try {
-    const dir = getAudioDirectory();
-    const dirInfo = await FileSystem.getInfoAsync(dir);
-    if (!dirInfo.exists) return 0;
-
-    const files = await FileSystem.readDirectoryAsync(dir);
     let totalSize = 0;
 
-    for (const file of files) {
-      const fileInfo = await FileSystem.getInfoAsync(dir + file);
-      totalSize += fileInfo.size || 0;
+    // 1. Audio downloads directory
+    const dir = getAudioDirectory();
+    const dirInfo = await FileSystem.getInfoAsync(dir);
+    if (dirInfo.exists) {
+      const files = await FileSystem.readDirectoryAsync(dir);
+      for (const file of files) {
+        const fileInfo = await FileSystem.getInfoAsync(dir + file);
+        totalSize += fileInfo.size || 0;
+      }
+    }
+
+    // 2. Offline PDF score downloads directory
+    const scoresDir = (FileSystem.documentDirectory || "") + "scores/";
+    const scoresInfo = await FileSystem.getInfoAsync(scoresDir);
+    if (scoresInfo.exists) {
+      const scoreFiles = await FileSystem.readDirectoryAsync(scoresDir);
+      for (const file of scoreFiles) {
+        const fileInfo = await FileSystem.getInfoAsync(scoresDir + file);
+        totalSize += fileInfo.size || 0;
+      }
     }
 
     return totalSize;

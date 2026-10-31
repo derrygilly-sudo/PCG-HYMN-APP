@@ -3,6 +3,8 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Alert } from 'react-native';
 import { useSettingsStore } from '../stores/settingsStore';
 import { getThemeColors } from '../theme/theme';
+import { isPdfDocument } from '../services/pdfService';
+import PdfScoreViewer from './PdfScoreViewer';
 
 const openPdf = async (url) => {
   try {
@@ -22,7 +24,12 @@ const PdfButton = ({ label, url, colors }) => (
   </TouchableOpacity>
 );
 
-const TonicSolfaView = ({ tonicSolfa, solfaPdfUrl, scorePdfUrl }) => {
+const TonicSolfaView = ({
+  tonicSolfa,
+  solfaPdfUrl,
+  scorePdfUrl,
+  hymn,
+}) => {
   const darkMode = useSettingsStore((state) => state.darkMode);
   const colors = getThemeColors(darkMode);
   const hasPdf = !!(solfaPdfUrl || scorePdfUrl);
@@ -31,12 +38,25 @@ const TonicSolfaView = ({ tonicSolfa, solfaPdfUrl, scorePdfUrl }) => {
     return (
       <View style={styles.empty}>
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-          Tonic solfa not available
+          Tonic sol-fa not available for this hymn
         </Text>
       </View>
     );
   }
 
+  // If the tonic sol-fa is a PDF document (URL or file)
+  if (isPdfDocument(tonicSolfa)) {
+    return (
+      <PdfScoreViewer
+        rawUrl={tonicSolfa}
+        hymn={hymn}
+        scoreType="solfa"
+        label="Tonic Sol-fa Notation"
+      />
+    );
+  }
+
+  // Legacy plain-text tonic sol-fa notation
   return (
     <View>
       {hasPdf && (
@@ -52,7 +72,12 @@ const TonicSolfaView = ({ tonicSolfa, solfaPdfUrl, scorePdfUrl }) => {
 
       {tonicSolfa ? (
         <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.label, { color: colors.primary }]}>Tonic Solfa</Text>
+          <View style={styles.headerRow}>
+            <Text style={[styles.label, { color: colors.primary }]}>Tonic Sol-fa Notation</Text>
+            <View style={[styles.badge, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}>
+              <Text style={[styles.badgeText, { color: colors.secondary }]}>Text Notation</Text>
+            </View>
+          </View>
           <Text style={[styles.notation, { color: colors.text }]}>{tonicSolfa}</Text>
         </View>
       ) : null}
@@ -65,21 +90,36 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 8,
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    marginBottom: 8,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   notation: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: undefined,
-    lineHeight: 28,
-    letterSpacing: 1,
+    lineHeight: 26,
+    letterSpacing: 0.5,
   },
   pdfRow: {
     marginHorizontal: 16,
@@ -102,7 +142,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 15,
     fontStyle: 'italic',
   },
 });

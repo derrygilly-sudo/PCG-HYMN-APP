@@ -29,6 +29,7 @@ export const useHymnStore = create((set, get) => ({
   categories: [],
   searchResults: [],
   activeCategoryFilter: null,
+  selectedCategory: null,
   totalHymns: 0,
   isLoading: false,
   error: null,
@@ -183,15 +184,19 @@ export const useHymnStore = create((set, get) => ({
 
   filterByCategory: (categoryId) => {
     if (!categoryId) {
-      set({ activeCategoryFilter: null });
+      set({ activeCategoryFilter: null, selectedCategory: null });
       get().loadHymns();
       return;
     }
     try {
       const filtered = dbGetHymnsByCategory(categoryId);
-      set({ hymns: filtered, activeCategoryFilter: categoryId });
+      set({ hymns: filtered, activeCategoryFilter: categoryId, selectedCategory: categoryId });
     } catch (error) {
       console.error("Error filtering category:", error);
     }
+  },
+
+  getHymnsWithAudio: () => {
+    return (get().hymns || []).filter((h) => !!h.audio_url);
   },
 }));

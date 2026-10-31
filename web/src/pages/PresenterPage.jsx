@@ -26,26 +26,26 @@ const PresenterPage = () => {
   const containerRef = useRef(null);
 
   useEffect(() => {
+    const loadAllHymns = async () => {
+      const { data } = await supabase
+        .from('hymns')
+        .select('*')
+        .order('hymn_number', { ascending: true });
+
+      if (data && data.length > 0) {
+        setHymns(data);
+        if (hymnId) {
+          const found = data.find((h) => h.id === hymnId || h.hymn_number === parseInt(hymnId, 10));
+          setCurrentHymn(found || data[0]);
+        } else {
+          setCurrentHymn(data[0]);
+        }
+        setCurrentStanzaIndex(0);
+      }
+    };
+
     loadAllHymns();
   }, [hymnId]);
-
-  const loadAllHymns = async () => {
-    const { data } = await supabase
-      .from('hymns')
-      .select('*')
-      .order('hymn_number', { ascending: true });
-
-    if (data && data.length > 0) {
-      setHymns(data);
-      if (hymnId) {
-        const found = data.find((h) => h.id === hymnId || h.hymn_number === parseInt(hymnId, 10));
-        setCurrentHymn(found || data[0]);
-      } else {
-        setCurrentHymn(data[0]);
-      }
-      setCurrentStanzaIndex(0);
-    }
-  };
 
   // Helper to split lyrics into stanzas
   const parseStanzas = (lyricsText) => {

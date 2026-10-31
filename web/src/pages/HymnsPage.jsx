@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import HymnDetailDrawer from '../components/HymnDetailDrawer';
+import HymnImportModal from '../components/HymnImportModal';
 import Swal from 'sweetalert2';
 import {
   SearchIcon,
@@ -25,6 +26,7 @@ import {
   PauseIcon,
   TwiIcon,
   MoreIcon,
+  UploadCloudIcon,
 } from '../config/icons';
 
 const ITEMS_PER_PAGE = 20;
@@ -35,6 +37,7 @@ const HymnsPage = ({ onOpenHymnForm }) => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Filters & Search
   const [search, setSearch] = useState('');
@@ -290,9 +293,12 @@ const HymnsPage = ({ onOpenHymnForm }) => {
           <p>Manage, translate, and audit {hymns.length} Presbyterian Church hymns</p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button className="btn btn-secondary" onClick={handleRefresh} disabled={refreshing}>
             <RefreshIcon className={refreshing ? 'spin' : ''} /> Refresh
+          </button>
+          <button className="btn btn-secondary" onClick={() => setImportModalOpen(true)}>
+            <UploadCloudIcon /> Import Excel / CSV
           </button>
           <button className="btn btn-primary" onClick={() => onOpenHymnForm ? onOpenHymnForm() : null}>
             <AddIcon /> Add Hymn
@@ -713,6 +719,15 @@ const HymnsPage = ({ onOpenHymnForm }) => {
           setDetailDrawerOpen(false);
           if (onOpenHymnForm) onOpenHymnForm(id);
         }}
+      />
+
+      {/* Excel & CSV Import Modal */}
+      <HymnImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onSuccess={loadData}
+        categories={categories}
+        existingHymns={hymns}
       />
     </div>
   );

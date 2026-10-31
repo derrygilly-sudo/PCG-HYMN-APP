@@ -17,7 +17,7 @@ import {
 const CategoriesPage = () => {
   const [categories, setCategories] = useState([]);
   const [hymns, setHymns] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
 

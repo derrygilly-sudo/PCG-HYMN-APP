@@ -26,6 +26,7 @@ export const initDatabase = async () => {
       lyrics_en TEXT NOT NULL,
       lyrics_twi TEXT,
       tonic_solfa TEXT,
+      staff_notation TEXT,
       composer TEXT,
       scripture_reference TEXT,
       meter TEXT,
@@ -38,6 +39,18 @@ export const initDatabase = async () => {
       created_at TEXT
     )
   `);
+
+  // Migration for existing databases: ensure staff_notation column exists
+  try {
+    database.execSync(`ALTER TABLE hymns ADD COLUMN staff_notation TEXT`);
+    // Column was just added, trigger a full re-sync to fetch staff_notation for all hymns
+    database.runSync(`INSERT OR REPLACE INTO sync_meta (key, value) VALUES (?, ?)`, [
+      "last_synced_at",
+      "2000-01-01T00:00:00Z",
+    ]);
+  } catch (e) {
+    // Column already exists or table newly created
+  }
 
   database.execSync(`
     CREATE TABLE IF NOT EXISTS categories (
@@ -281,10 +294,10 @@ export const insertOrUpdateHymn = (hymn) => {
   database.runSync(
     `INSERT OR REPLACE INTO hymns 
     (id, hymn_number, category_id, title_en, title_twi, lyrics_en, lyrics_twi, 
-     tonic_solfa, composer, scripture_reference, meter, key_signature,
+     tonic_solfa, staff_notation, composer, scripture_reference, meter, key_signature,
      audio_url, audio_duration, audio_size_bytes, is_published, updated_at, created_at,
      score_pdf_url, solfa_pdf_url, tunes_json)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       hymn.id,
       hymn.hymn_number,
@@ -294,6 +307,7 @@ export const insertOrUpdateHymn = (hymn) => {
       hymn.lyrics_en,
       hymn.lyrics_twi || null,
       hymn.tonic_solfa || null,
+      hymn.staff_notation || null,
       hymn.composer || null,
       hymn.scripture_reference || null,
       hymn.meter || null,

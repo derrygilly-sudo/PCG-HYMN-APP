@@ -105,6 +105,18 @@ const HymnCard = ({ hymn, onPress, showPreview = true }) => {
               </Text>
             </View>
           ) : null}
+          {(hymn.staff_notation || hymn.tonic_solfa) ? (
+            <View
+              style={[
+                styles.meterPill,
+                { backgroundColor: colors.surfaceCard, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.meterText, { color: colors.primary }]}>
+                {hymn.staff_notation ? "♫ Score" : "Sol-fa"}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
 

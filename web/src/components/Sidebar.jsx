@@ -84,11 +84,11 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen, session, 
               {!collapsed && (
                 <>
                   <span className="nav-label">{item.label}</span>
-                  {item.count !== null && item.count !== undefined && (
+                  {/* {item.count !== null && item.count !== undefined && (
                     <span className={`nav-badge ${item.isSpecial ? 'nav-badge-gold' : ''}`}>
                       {item.count}
                     </span>
-                  )}
+                  )} */}
                 </>
               )}
             </NavLink>
@@ -100,7 +100,7 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen, session, 
           {!collapsed && (
             <div className="sync-status-indicator">
               <span className="sync-dot"></span>
-              <span>Supabase Live Sync Active</span>
+              <span>Live Sync Active</span>
             </div>
           )}
 

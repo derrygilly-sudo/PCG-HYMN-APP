@@ -27,7 +27,8 @@
         {
           "backgroundColor": "#2D5A27"
         }
-      ]
+      ],
+      "expo-sharing"
     ]
   }
 }

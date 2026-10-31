@@ -26,6 +26,7 @@ import PlaylistModal from "../components/PlaylistModal";
 import PresentationModal from "../components/PresentationModal";
 import TonicSolfaView from "../components/TonicSolfaView";
 import TuneList from "../components/TuneList";
+import StaffNotationView from "../components/StaffNotationView";
 import { getHymnById } from "../database/localDb";
 import { getLocalAudioPath } from "../services/audioService";
 import { useHymnStore } from "../stores/hymnStore";
@@ -226,6 +227,60 @@ const HymnDetailScreen = ({ route }) => {
                 </Text>
               </View>
             ) : null}
+            {hymn.tonic_solfa || hymn.solfa_pdf_url || hymn.score_pdf_url ? (
+              <TouchableOpacity
+                onPress={() => setActiveTab("solfa")}
+                style={[
+                  styles.meterPill,
+                  {
+                    backgroundColor:
+                      activeTab === "solfa"
+                        ? colors.secondary
+                        : colors.surfaceCard,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.meterPillText,
+                    {
+                      color:
+                        activeTab === "solfa" ? "#000000" : colors.primary,
+                    },
+                  ]}
+                >
+                  Sol-fa
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+            {hymn.staff_notation ? (
+              <TouchableOpacity
+                onPress={() => setActiveTab("staff")}
+                style={[
+                  styles.meterPill,
+                  {
+                    backgroundColor:
+                      activeTab === "staff"
+                        ? colors.secondary
+                        : colors.surfaceCard,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.meterPillText,
+                    {
+                      color:
+                        activeTab === "staff" ? "#000000" : colors.primary,
+                    },
+                  ]}
+                >
+                  ♫ Staff Score
+                </Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
 
           {hymn.scripture_reference ? (
@@ -310,7 +365,7 @@ const HymnDetailScreen = ({ route }) => {
           />
         ) : null}
 
-        {/* Tabs: Lyrics vs Tonic Solfa */}
+        {/* Tabs: Lyrics vs Tonic Sol-fa vs Staff Notation */}
         <View style={[styles.tabs, { borderColor: colors.border }]}>
           <TouchableOpacity
             style={[
@@ -337,41 +392,76 @@ const HymnDetailScreen = ({ route }) => {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.tab,
-              activeTab === "solfa" && {
-                borderBottomColor: colors.primary,
-                borderBottomWidth: 3,
-              },
-            ]}
-            onPress={() => setActiveTab("solfa")}
-          >
-            <Text
+          {(hymn.tonic_solfa ||
+            hymn.solfa_pdf_url ||
+            hymn.score_pdf_url ||
+            !hymn.staff_notation) && (
+            <TouchableOpacity
               style={[
-                styles.tabText,
-                {
-                  color:
-                    activeTab === "solfa"
-                      ? colors.primary
-                      : colors.textSecondary,
+                styles.tab,
+                activeTab === "solfa" && {
+                  borderBottomColor: colors.primary,
+                  borderBottomWidth: 3,
                 },
               ]}
+              onPress={() => setActiveTab("solfa")}
             >
-              Sol-fa & Score
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.tabText,
+                  {
+                    color:
+                      activeTab === "solfa"
+                        ? colors.primary
+                        : colors.textSecondary,
+                  },
+                ]}
+              >
+                Sol-fa & Score
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {hymn.staff_notation ? (
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === "staff" && {
+                  borderBottomColor: colors.primary,
+                  borderBottomWidth: 3,
+                },
+              ]}
+              onPress={() => setActiveTab("staff")}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  {
+                    color:
+                      activeTab === "staff"
+                        ? colors.primary
+                        : colors.textSecondary,
+                  },
+                ]}
+              >
+                Staff Notation
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* Tab Content */}
-        {activeTab === "lyrics" ? (
-          <LyricsView hymn={hymn} />
-        ) : (
+        {activeTab === "lyrics" && <LyricsView hymn={hymn} />}
+        {activeTab === "solfa" && (
           <TonicSolfaView
-          tonicSolfa={hymn.tonic_solfa}
-          solfaPdfUrl={hymn.solfa_pdf_url}
-          scorePdfUrl={hymn.score_pdf_url}
-        />
+            tonicSolfa={hymn.tonic_solfa}
+            solfaPdfUrl={hymn.solfa_pdf_url}
+            scorePdfUrl={hymn.score_pdf_url}
+            hymn={hymn}
+          />
+        )}
+        {activeTab === "staff" && (
+          <StaffNotationView staffNotation={hymn.staff_notation} hymn={hymn} />
         )}
 
         <View style={{ height: 140 }} />

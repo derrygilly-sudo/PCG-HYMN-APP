@@ -8,8 +8,8 @@ Cross-platform mobile application for the **Presbyterian Church of Ghana Hymnal*
 
 - **Offline-First SQLite Storage**: Fast local queries and offline access using `expo-sqlite`.
 - **Bilingual Hymns**: English (`lyrics_en`, `title_en`) and Twi (`lyrics_twi`, `title_twi`).
-- **Tonic Sol-fa Notation**: In-app sol-fa sheet viewer for choristers and instrumentalists.
-- **Audio Streaming & Offline Downloads**: Stream via `expo-audio` or download MP3s to device storage with `expo-file-system`.
+- **Tonic Sol-fa & Staff Notation**: Text notation plus high-resolution PDF score viewing, offline score caching, and native PDF sharing.
+- **Audio Streaming & Offline Downloads**: Stream via `expo-audio` or download MP3s & sheet PDFs to device storage with `expo-file-system`.
 - **Floating Mini Player & Expandable Modal Player**: Seamless audio playback throughout the app.
 - **Smart Search & Quick Dialpad**: Instant number jump and fuzzy search with `fuse.js`.
 - **Personal Library**: Custom playlists, favorite bookmarks, and recent history.

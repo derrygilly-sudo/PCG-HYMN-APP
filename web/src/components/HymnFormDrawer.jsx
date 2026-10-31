@@ -1,5 +1,5 @@
 // src/components/HymnFormDrawer.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../config/supabase';
 import Swal from 'sweetalert2';
 import {
@@ -131,6 +131,14 @@ const HymnFormDrawer = ({ hymnId, isOpen, onClose, onSaved }) => {
   const [activeTab, setActiveTab] = useState('lyrics'); // 'lyrics' | 'metadata' | 'music'
   const isEditing = !!hymnId;
 
+  const loadHymn = useCallback(async () => {
+    const { data, error } = await supabase.from('hymns').select('*').eq('id', hymnId).single();
+    if (!error && data) {
+      setHymn(data);
+      setTunes(tunesFromHymn(data));
+    }
+  }, [hymnId]);
+
   // Load categories and hymn on open
   useEffect(() => {
     if (isOpen) {
@@ -162,7 +170,7 @@ const HymnFormDrawer = ({ hymnId, isOpen, onClose, onSaved }) => {
     return () => {
       document.body.classList.remove('drawer-open');
     };
-  }, [isOpen, hymnId]);
+  }, [isOpen, hymnId, loadHymn]);
 
   // Draft auto-save for new hymns
   useEffect(() => {
@@ -177,14 +185,6 @@ const HymnFormDrawer = ({ hymnId, isOpen, onClose, onSaved }) => {
       .select('*')
       .order('sort_order', { ascending: true });
     setCategories(data || []);
-  };
-
-  const loadHymn = async () => {
-    const { data, error } = await supabase.from('hymns').select('*').eq('id', hymnId).single();
-    if (!error && data) {
-      setHymn(data);
-      setTunes(tunesFromHymn(data));
-    }
   };
 
   const handleChange = (field, value) => {

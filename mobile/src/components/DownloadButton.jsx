@@ -6,6 +6,11 @@ import {
 import React, { useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { deleteDownloadedAudio, downloadAudio } from "../services/audioService";
+import {
+  deleteCachedPdf,
+  downloadAndCachePdf,
+  isPdfDocument,
+} from "../services/pdfService";
 import { useHymnStore } from "../stores/hymnStore";
 import { useSettingsStore } from "../stores/settingsStore";
 import { getThemeColors } from "../theme/theme";
@@ -26,46 +31,89 @@ const DownloadButton = ({ hymn, tune = null, downloaded, onChanged, compact = fa
   const colors = getThemeColors(darkMode);
 
   const handleDownload = async () => {
-    if (!audioUrl) {
-      Alert.alert("No Audio", "This hymn does not have an audio track yet.");
+    const pdfTargets = [
+      { type: "solfa", url: hymn.solfa_pdf_url },
+      {
+        type: "solfa",
+        url: isPdfDocument(hymn.tonic_solfa) ? hymn.tonic_solfa : null,
+      },
+      { type: "staff", url: hymn.score_pdf_url },
+      { type: "staff", url: hymn.staff_notation },
+    ].filter((target) => target.url);
+
+    if (!audioUrl && pdfTargets.length === 0) {
+      Alert.alert("No Media", "This hymn does not have audio or PDF scores attached.");
       return;
     }
 
     setIsDownloading(true);
     setProgress(0);
 
-    const result = await downloadAudio(
-      hymn.id,
-      audioUrl,
-      (p) => {
-        setProgress(p);
-      },
-      tuneId,
-    );
+    let audioSuccess = !audioUrl;
+    let pdfResults = [];
+    try {
+      if (audioUrl) {
+        const result = await downloadAudio(
+          hymn.id,
+          audioUrl,
+          setProgress,
+          tuneId,
+        );
+        audioSuccess = result.success;
+      }
 
-    setIsDownloading(false);
+      if (!tune) {
+        pdfResults = await Promise.all(
+          pdfTargets.map(({ type, url }) =>
+            downloadAndCachePdf(hymn.id, type, url),
+          ),
+        );
+      }
+    } finally {
+      setIsDownloading(false);
+    }
 
-    if (result.success) {
+    const pdfSuccess = pdfResults.every((result) => result.success);
+    if (audioSuccess) {
       await loadDownloads();
       await loadHymns();
       if (onChanged) onChanged();
-      Alert.alert(
-        "Downloaded",
-        `${tune ? tune.name : "Audio"} saved for offline playback.`,
-      );
+      if (pdfSuccess) {
+        const downloadedContent = [
+          audioUrl ? (tune ? tune.name : "Audio") : null,
+          pdfResults.length ? "sheet scores" : null,
+        ]
+          .filter(Boolean)
+          .join(" and ");
+        Alert.alert(
+          "Downloaded",
+          `${downloadedContent} saved for offline use.`,
+        );
+      } else {
+        Alert.alert(
+          "Partially Downloaded",
+          "Audio was saved, but one or more sheet scores could not be cached.",
+        );
+      }
     } else {
-      Alert.alert("Error", "Failed to download audio. Please try again.");
+      Alert.alert("Error", "Failed to download media. Please try again.");
     }
   };
 
   const handleDelete = () => {
-    Alert.alert("Remove Download", "Delete this audio from your device?", [
+    Alert.alert("Remove Download", "Delete saved audio and offline scores from your device?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          await deleteDownloadedAudio(hymn.id, tuneId);
+          if (audioUrl) {
+            await deleteDownloadedAudio(hymn.id, tuneId);
+          }
+          if (!tune) {
+            await deleteCachedPdf(hymn.id, "solfa");
+            await deleteCachedPdf(hymn.id, "staff");
+          }
           await loadDownloads();
           await loadHymns();
           if (onChanged) onChanged();
